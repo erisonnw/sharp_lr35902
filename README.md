@@ -30,6 +30,5 @@ rgbfix -v -p 0xFF main.gb
 ```
 
 ## Referências
-- [Pan Docs — Documentação Técnica do Game Boy](https://gbdev.io)
-- [GB ASM Tutorial](https://gbdev.io)
-- [Documentação do RGBDS](https://gbdev.iodocs/)
+- [Pan Docs — Documentação Técnica do Game Boy](https://gbdev.io/pandocs/)
+- [Documentação do RGBDS](https://rgbds.gbdev.io/docs)
