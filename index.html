@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador 2BPP + Tilemap (GB/GBC)</title>
+  <style>
+    body { font-family: monospace; background: #181818; color: #eee; padding: 20px; }
+    #dropzone {
+      border: 2px dashed #666; padding: 30px; text-align: center;
+      margin-bottom: 15px; background: #222; cursor: pointer;
+    }
+    #dropzone.hover { border-color: #4caf50; background: #2a332a; }
+    canvas { image-rendering: pixelated; border: 1px solid #555; background: #000; margin-top: 10px; }
+    .controls { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+    input, select { background: #333; color: #fff; border: 1px solid #555; padding: 5px; }
+  </style>
+</head>
+<body>
+  <div id="dropzone">Arraste e solte aqui o arquivo <b>.2bpp</b> e o <b>.tilemap</b> juntos</div>
+  <div class="controls">
+    <label>Largura (tiles): <input type="number" id="mapWidth" value="20" min="1" max="256"></label>
+    <label>Zoom: <input type="number" id="zoom" value="3" min="1" max="10"></label>
+    <label>Paleta:
+      <select id="palette">
+        <option value="dmg">Game Boy Clássico (Verde)</option>
+        <option value="gray" selected>Tons de Cinza (GBC Padrão)</option>
+      </select>
+    </label>
+    <span id="status">Aguardando arquivos...</span>
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    let tilesData = null, mapData = null;
+    const palettes = {
+      gray: [[255,255,255], [170,170,170], [85,85,85], [0,0,0]],
+      dmg:  [[155,188,15], [139,172,15], [48,98,48], [15,56,15]]
+    };
+
+    const dz = document.getElementById('dropzone');
+    dz.ondragover = e => { e.preventDefault(); dz.classList.add('hover'); };
+    dz.ondragleave = () => dz.classList.remove('hover');
+    dz.ondrop = async e => {
+      e.preventDefault(); dz.classList.remove('hover');
+      for (const file of e.dataTransfer.files) {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        if (file.name.endsWith('.2bpp')) tilesData = buf;
+        else if (file.name.endsWith('.tilemap')) mapData = buf;
+      }
+      render();
+    };
+
+    ['mapWidth', 'zoom', 'palette'].forEach(id => document.getElementById(id).oninput = render);
+
+    function render() {
+      const status = document.getElementById('status');
+      if (!tilesData || !mapData) {
+        status.textContent = `Carregado: ${tilesData ? '2BPP OK' : 'Falta 2BPP'} | ${mapData ? 'Tilemap OK' : 'Falta Tilemap'}`;
+        return;
+      }
+      const wTiles = parseInt(document.getElementById('mapWidth').value) || 20;
+      const zoom = parseInt(document.getElementById('zoom').value) || 3;
+      const pal = palettes[document.getElementById('palette').value];
+      const hTiles = Math.ceil(mapData.length / wTiles);
+
+      const canvas = document.getElementById('canvas');
+      canvas.width = wTiles * 8;
+      canvas.height = hTiles * 8;
+      canvas.style.width = (canvas.width * zoom) + 'px';
+      canvas.style.height = (canvas.height * zoom) + 'px';
+
+      const ctx = canvas.getContext('2d');
+      const img = ctx.createImageData(canvas.width, canvas.height);
+
+      for (let idx = 0; idx < mapData.length; idx++) {
+        const tileId = mapData[idx];
+        const tx = (idx % wTiles) * 8;
+        const ty = Math.floor(idx / wTiles) * 8;
+        const tileOffset = tileId * 16;
+
+        for (let y = 0; y < 8; y++) {
+          const b1 = tilesData[tileOffset + y * 2] || 0;
+          const b2 = tilesData[tileOffset + y * 2 + 1] || 0;
+          for (let x = 0; x < 8; x++) {
+            const bit = 7 - x;
+            const colorIdx = (((b2 >> bit) & 1) << 1) | ((b1 >> bit) & 1);
+            const [r, g, b] = pal[colorIdx];
+            const p = ((ty + y) * canvas.width + (tx + x)) * 4;
+            img.data[p] = r; img.data[p+1] = g; img.data[p+2] = b; img.data[p+3] = 255;
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      status.textContent = `Renderizado: ${wTiles}x${hTiles} tiles (${tilesData.length / 16} tiles no 2BPP)`;
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador 2BPP & Tilemap</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #1e1e1e;
+      color: #eee;
+      padding: 20px;
+    }
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      background: #2a2a2a;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    input[type="number"] {
+      width: 60px;
+      padding: 4px;
+    }
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    canvas {
+      image-rendering: pixelated;
+      border: 2px solid #555;
+      background: #000;
+      display: block;
+    }
+    #info {
+      font-family: monospace;
+      color: #88c070;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bar">
+    <label>Tiles (.2bpp): <input type="file" id="fTiles"></label>
+    <label>Mapa (.tilemap): <input type="file" id="fMap"></label>
+  </div>
+
+  <div class="bar">
+    <label>Largura X (tiles): <input type="number" id="w" value="20" min="1"></label>
+    <label>Altura Y (tiles): <input type="number" id="h" value="18" min="1"></label>
+    <label>Zoom: <input type="number" id="zoom" value="3" min="1" max="10"></label>
+    <button onclick="setSize(20,18)">20×18 (Tela GB)</button>
+    <button onclick="setSize(32,32)">32×32 (VRAM)</button>
+    <span id="info">160 × 144 px</span>
+  </div>
+
+  <canvas id="cv"></canvas>
+
+  <script>
+    const CORES = ["#e0f8d0", "#88c070", "#346856", "#081820"];
+    let tiles = [];
+    let mapa = null;
+
+    document.getElementById("fTiles").onchange = e => lerArquivo(e.target.files[0], buf => {
+      const b = new Uint8Array(buf);
+      tiles = [];
+      for (let i = 0; i + 15 < b.length; i += 16) {
+        const t = [];
+        for (let y = 0; y < 8; y++) {
+          const b1 = b[i + y * 2];
+          const b2 = b[i + y * 2 + 1];
+          for (let x = 7; x >= 0; x--) {
+            t.push(((b2 >> x & 1) << 1) | (b1 >> x & 1));
+          }
+        }
+        tiles.push(t);
+      }
+      desenhar();
+    });
+
+    document.getElementById("fMap").onchange = e => lerArquivo(e.target.files[0], buf => {
+      mapa = new Uint8Array(buf);
+      if (mapa.length === 360) setSize(20, 18);
+      else if (mapa.length === 1024) setSize(32, 32);
+      else desenhar();
+    });
+
+    function lerArquivo(file, cb) {
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = ev => cb(ev.target.result);
+      r.readAsArrayBuffer(file);
+    }
+
+    function setSize(x, y) {
+      document.getElementById("w").value = x;
+      document.getElementById("h").value = y;
+      desenhar();
+    }
+
+    function desenhar() {
+      const cols = +document.getElementById("w").value || 1;
+      const rows = +document.getElementById("h").value || 1;
+      const z = +document.getElementById("zoom").value || 1;
+
+      const pxW = cols * 8;
+      const pxH = rows * 8;
+      document.getElementById("info").textContent = `${pxW} × ${pxH} px (${cols} × ${rows} tiles)`;
+
+      const cv = document.getElementById("cv");
+      cv.width = pxW * z;
+      cv.height = pxH * z;
+      const ctx = cv.getContext("2d");
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const idx = r * cols + c;
+          const tileId = mapa ? mapa[idx] : idx;
+          const tile = tiles[tileId];
+          if (!tile) continue;
+
+          for (let y = 0; y < 8; y++) {
+            for (let x = 0; x < 8; x++) {
+              ctx.fillStyle = CORES[tile[y * 8 + x]];
+              ctx.fillRect((c * 8 + x) * z, (r * 8 + y) * z, z, z);
+            }
+          }
+        }
+      }
+    }
+
+    ["w", "h", "zoom"].forEach(id => document.getElementById(id).oninput = desenhar);
+  </script>
+</body>
+</html>
