@@ -2,6 +2,11 @@
 
 Repositório de estudo do processador **Sharp LR35902** e do hardware do **Game Boy (DMG)** utilizando Assembly e o ecossistema **RGBDS**.
 
+## Resultado
+![1-42 linhas](images/1-42_lines.png)
+![45-92 linhas](images/45-92_lines.png)
+![resultado](images/result.png)
+
 ## Estrutura do Repositório
 
 - **`hell_world/`** — Códigos-fonte em Assembly (`main.s`), gráficos binários (`.2bpp` e `.tilemap`) e rotinas comentadas com referências diretas à documentação oficial ([Pan Docs](https://gbdev.io)).
